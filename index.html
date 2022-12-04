@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="renderer" content="webkit">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- jsdiff -->
+    <script src="diff.js"></script>
+    <script src="jquery.js"></script>
+
+    <style>
+        .color {
+            color: black;
+            background-color: #fff;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .normal {
+            color: black;
+        }
+
+        .add {
+            background-color: rgb(236, 253, 240);
+        }
+
+        .removed {
+            background-color: rgb(251, 233, 235);
+        }
+
+        .pre {
+            margin: 0;
+            vertical-align: top;
+            display: inline-block;
+        }
+
+        .content {
+            padding-left: 2%;
+            padding-right: 2%;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .outerPre {
+            width: calc(100% - 88px);
+            display: inline-block;
+        }
+
+        .spanWidth {
+            width: 20px;
+            display: inline-block;
+            white-space: pre-wrap;
+        }
+
+        .innerPre {
+            margin: 0;
+            word-wrap: break-word;
+            word-break: break-all;
+            white-space: normal;
+        }
+
+        .line {
+            color: rgba(27, 31, 35, .3);
+            width: 88px;
+        }
+
+        .colLeft {
+            display: inline-block;
+            color: #586069;
+            width: 88px;
+            background-color: #dbedff;
+        }
+
+        .splitWidth {
+            width: 44px;
+        }
+
+        .collRight {
+            display: inline-block;
+            width: calc(100% - 88px);
+            vertical-align: top;
+        }
+
+        .collRightSplit {
+            width: calc(100% - 44px);
+        }
+
+        .colRContent {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            height: 16px;
+            background-color: #f1f8ff;
+        }
+
+        .octicon {
+            fill: currentColor;
+        }
+
+        .arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arrow:hover {
+            color: #fff;
+            background-color: rgb(3, 102, 214);
+        }
+
+        .cRHeight {
+            height: 32px;
+        }
+
+        .sPart {
+            display: inline-block;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        .iBlock {
+            box-sizing: border-box;
+            display: inline-block;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        .prBlock {
+            width: 100%;
+        }
+
+        .splitLN {
+            width: 44px;
+            display: inline-block;
+            white-space: pre-wrap;
+            color: rgba(27, 31, 35, .3);
+            font-family: 'SFMono-Regular', 'Liberation Mono', Menlo, Courier, monospace;
+        }
+
+        .splitCon {
+            display: inline-block;
+            white-space: pre-wrap;
+            vertical-align: top;
+            width: calc(100% - 44px);
+        }
+
+        .filled {
+            width: calc(100% - 52px);
+        }
+
+        .radioGroup {
+            display: flex;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            justify-content: flex-end;
+            align-items: center;
+            padding-left: 2%;
+            padding-right: 2%;
+        }
+
+        .lBorder {
+            border-right: 1px solid #ddd;
+        }
+
+
+        .rBorder {
+            border-left: 1px solid #ddd;
+            position: relative;
+            left: -1px;
+        }
+
+        .removed .splitCon del {
+            border-radius: 0.2em;
+            text-decoration: none;
+            background-color: #ffb6ba;
+        }
+
+        .add .splitCon ins {
+            border-radius: 0.2em;
+            text-decoration: none;
+            background-color: #97f295;
+        }
+    </style>
+
+    <title>文本比较</title>
+</head>
+<body>
+<div class="container-fluid">
+
+
+    <div class="row">
+        <div style="display: flex; width: 100%;">
+            <div style="flex: 1; margin-left: 5%;">
+                <textarea id="leftTextArea" rows="10" style="width: 100%;">这是一段：
+左侧测试
+文字
+山不在高，水不在深，有仙则名</textarea>
+            </div>
+            <div style="flex: 1; margin-right: 5%">
+                <textarea id="rightTextArea" rows="10" style="width: 100%;">这是一段？
+右侧测试
+文字
+山不再高，水不在深，有仙则名</textarea>
+            </div>
+        </div>
+        <div style="text-align: center">
+            <button id="diffBtn" style="background-color: #1890ff; color: white;">比较</button>
+        </div>
+        <div>白底：文本对比完全相同。浅色底：该段落有不相同的内容。深色底：具体不相同的地方。</div>
+        <div style="display: flex; width: 100%; background-color: grey; text-align: center">
+            <div style="flex: 1; font-size: larger">左边内容</div>
+            <div style="flex: 1; font-size: larger">右边内容</div>
+        </div>
+        <div id="myDiffElement"></div>
+    </div>
+
+</div>
+<script>
+    $(document).ready(function () {
+
+        function encodeHtml(html) {
+            let temp = document.createElement("div");
+            (temp.textContent != undefined) ? (temp.textContent = html) : (temp.innerText = html);
+            let output = temp.innerHTML;
+            temp = null;
+            return output;
+        }
+
+        function removeInsElements(line) {
+            return line.replace(/(<ins[^>]*>((.|\n)*?)<\/ins>)/g, '');
+        }
+
+        function removeDelElements(line) {
+            return line.replace(/(<del[^>]*>((.|\n)*?)<\/del>)/g, '');
+        }
+
+        function getLNPadding(origin) {
+            const item = ('     ' + origin).slice(-5);
+            return "<div class='splitLN'>" + encodeHtml(origin) + "</div>"
+        }
+
+        function getPaddingContent(item) {
+            return "<div class='splitCon'>" + encodeHtml(item) + "</div>";
+        }
+
+        function getPaddingContentWithoutEncode(item) {
+            return "<div class='splitCon'>" + item + "</div>";
+        }
+
+        function getSplitCode(targetBlock, isHead) {
+            const {type, content: {head, hidden, tail}, leftPos, rightPos} = targetBlock;
+            return (isHead ? head : tail).map((item, index) => {
+                const shift = isHead ? 0 : (head.length + hidden.length);
+            return "<div>" +
+                "<div class='iBlock lBorder'>" + getLNPadding(leftPos + shift + index) + getPaddingContent('    ' + item) + "</div>" +
+                "<div class='iBlock'>" + getLNPadding(rightPos + shift + index) + getPaddingContent('    ' + item) + "</div>" +
+                "</div>";
+        }).join('');
+        }
+
+        function getCombinePart(leftPart, rightPart) {
+            const {type: lType, content: lContent, leftPos: lLeftPos, rightPos: lRightPos} = leftPart;
+            const {type: rType, content: rContent, leftPos: rLeftPos, rightPos: rRightPos} = rightPart;
+            const lArr = lContent?.head || [];
+            const rArr = rContent?.head || [];
+            const lClass = lType === '+' ? "add" : "removed";
+            const rClass = rType === '+' ? "add" : "removed";
+
+            const lHtmlArr = [];
+            const rHtmlArr = [];
+
+            const maxLen = Math.max(lArr.length, rArr.length);
+            for (let i = 0; i < maxLen; i++) {
+                const oldLine = lArr[i];
+                const newLine = rArr[i];
+
+                const diffArr = oldLine !== undefined && newLine !== undefined
+                    ? Diff.diffChars(oldLine, newLine)
+                    : undefined;
+                if (diffArr != undefined) {
+                    const highlightedLine = diffArr.reduce((highlightedLine, part) => {
+                        const elemType = part.added ? 'ins' : part.removed ? 'del' : null;
+                    const escapedValue = encodeHtml(part.value);
+
+                    if (elemType !== null) {
+                        return highlightedLine + "<" + elemType + ">" + escapedValue + "</" + elemType + ">";
+                    } else {
+                        return highlightedLine + escapedValue;
+                    }
+
+                }, '');
+
+                    lHtmlArr.push(removeInsElements(highlightedLine));
+                    rHtmlArr.push(removeDelElements(highlightedLine));
+
+                } else {
+                    if (oldLine !== undefined) {
+                        lHtmlArr.push(oldLine);
+                    }
+                    if (newLine !== undefined) {
+                        rHtmlArr.push(newLine);
+                    }
+                }
+            }
+
+            return "" +
+                "<div class='iBlock lBorder'>" +
+                lHtmlArr.map((item, index) => {
+                    return "<div class='prBlock " + lClass + "'>" +
+                        getLNPadding(lLeftPos + index) +
+                        getPaddingContentWithoutEncode('-  ' + item) +
+                        "</div>"
+                }).join('') +
+            "</div>" +
+            "<div class='iBlock' " + (lArr.length ? '' : 'rBorder') + ">" + rHtmlArr.map((item, index) => {
+                return "<div class='prBlock " + rClass + "'>" +
+                    getLNPadding(rRightPos + index) +
+                    getPaddingContentWithoutEncode('+  ' + item) +
+                    "</div>"
+            }).join('') +
+            "</div>"
+        }
+
+        function genLineGroup(diffArr) {
+            let initLineGroup = [];
+
+            initLineGroup = diffArr.map((item, index, originArr) => {
+                let added, removed, value, count;
+
+            added = item.added;
+            removed = item.removed;
+            value = item.value;
+            count = item.count;
+
+            const strArr = value?.split('\n').filter(item => item) || [];
+            const type = (added && '+') || (removed && '-') || ' ';
+            let head, hidden, tail;
+            if (type !== ' ') {
+                hidden = [];
+                tail = [];
+                head = strArr;
+            } else {
+                const strLength = strArr.length;
+                hidden = [];
+                tail = [];
+                head = strArr;
+            }
+            return {
+                type,
+                count,
+                content: {
+                    hidden,
+                    head,
+                    tail
+                }
+            }
+        });
+
+            let lStartNum = 1;
+            let rStartNum = 1;
+
+            initLineGroup.forEach(item => {
+                const {type, count} = item;
+            item.leftPos = lStartNum;
+            item.rightPos = rStartNum;
+            lStartNum += type === '+' ? 0 : count;
+            rStartNum += type === '-' ? 0 : count;
+        })
+
+            return initLineGroup;
+        }
+
+        // 生成 HTML 结构
+        function diffHtml(lineGroup) {
+            const length = lineGroup.length;
+            const contentList = [];
+            for (let i = 0; i < length; i++) {
+                const targetBlock = lineGroup[i];
+                const {type, content: {hidden}} = targetBlock;
+                if (type === ' ') {
+                    contentList.push("<div>" +
+                        getSplitCode(targetBlock, true) +
+                        "</div>")
+                } else if (type === '-') {
+                    const nextTarget = lineGroup[i + 1] || {content: {}};
+                    const nextIsPlus = nextTarget.type === '+';
+                    contentList.push("<div>" +
+                        getCombinePart(targetBlock, nextIsPlus ? nextTarget : {}) +
+                        "</div>")
+                    nextIsPlus ? i = i + 1 : void 0;
+                } else if (type === '+') {
+                    contentList.push("<div>" +
+                        getCombinePart({}, targetBlock) +
+                        "</div>")
+                }
+            }
+
+            const result = "<div>" + contentList.join('') + "</div>";
+            return result;
+        }
+
+
+        function nullOrEmptyCheck(val) {
+            return val == null || val == '' || val == 'null' || val == 'undefined';
+        }
+
+
+        function showDiffOfLeftAndRight() {
+            let blankLineReg = /\n(\n)*( )*(\n)*\n/g;
+            let leftText = document.getElementById("leftTextArea").value.replace(blankLineReg, "\n").replace(/\r/g, "").trim();
+            let rightText = document.getElementById("rightTextArea").value.replace(blankLineReg, "\n").replace(/\r/g, "").trim();
+
+            console.log(leftText);
+            console.log(rightText);
+
+            let diffArr = Diff.diffLines(leftText, rightText, {ignoreWhitespace: true});
+
+            let lineGroup = genLineGroup(diffArr);
+
+            let contentHtml = diffHtml(lineGroup);
+
+            $("#myDiffElement").html(contentHtml);
+        }
+
+
+        $("#diffBtn").click(function () {
+            showDiffOfLeftAndRight();
+        });
+
+
+        showDiffOfLeftAndRight();
+
+    });
+</script>
+</body>
+</html>
