@@ -14,5 +14,5 @@
 
 所有的 代码都在 [index.html](https://github.com/openmartin/jquery-diff/blob/master/index.html)
 
-css 和 js 是配合使用的，图省事可以直接复制过去，然后再此基础上修改。
+css 和 js 是配合使用的，图省事可以直接复制过去，然后在此基础上修改。
 
